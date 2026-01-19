@@ -2,7 +2,6 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 
-using ModernNotifyIcon.Theme;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -12,46 +11,39 @@ namespace PowerDimmer
     {
         internal Action? ExitClicked;
         public NotifyIcon NotifyIcon;
+        private readonly TrayMenuWindow trayMenuWindow;
 
         public NotifyIconController(ISettings settings)
         {
-            NotifyIcon = NotifyIconBuilder
-                .Create()
-                .Configure(builder => builder
-                    .AddToggle(option => option
-                        .SetText("Dimming active?")
-                        .SetChecked(settings.ActiveOnLaunch)
-                        .ConfigureItem(item =>
-                        {
-                            item.ShortcutKeyDisplayString = "CTRL+WIN+ALT+D";
+            NotifyIcon = new NotifyIcon
+            {
+                Icon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location)!,
+                Text = "PowerDimmer",
+                Visible = true
+            };
 
-                            settings.PropertyChanged += (_, e) =>
-                            {
-                                if (e.PropertyName == nameof(settings.DimmingEnabled))
-                                {
-                                    item.Checked = settings.DimmingEnabled;
-                                }
-                            };
-                        })
-                        .AddHandler((b) => settings.DimmingEnabled = b))
-                    .AddToggle(option => option
-                        .SetText("Dim Taskbar?")
-                        .SetChecked(settings.DimTaskbar)
-                        .AddHandler((b) => settings.DimTaskbar = b))
-                    .AddToggle(option => option
-                        .SetText("Active on launch?")
-                        .SetChecked(settings.ActiveOnLaunch)
-                        .AddHandler((b) => settings.ActiveOnLaunch = b))
-                    .AddSeparator()
-                    .AddItem(new TrackBarMenuItem(settings))
-                    .AddSeparator()
-                    .AddButton(option => option
-                        .SetText("E&xit")
-                        .AddHandler(() => ExitClicked?.Invoke())))
-                .Build(Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location)!);
+            trayMenuWindow = new TrayMenuWindow(settings);
+            trayMenuWindow.ExitRequested += () =>
+            {
+                trayMenuWindow.AllowClose();
+                ExitClicked?.Invoke();
+            };
 
-            NotifyIcon.Text = "PowerDimmer";
-            NotifyIcon.Visible = true;
+            NotifyIcon.MouseUp += (_, e) =>
+            {
+                if (e.Button != MouseButtons.Left && e.Button != MouseButtons.Right)
+                {
+                    return;
+                }
+
+                if (trayMenuWindow.IsVisible)
+                {
+                    trayMenuWindow.Hide();
+                    return;
+                }
+
+                trayMenuWindow.ShowAtCursor();
+            };
         }
     }
 
@@ -78,19 +70,36 @@ namespace PowerDimmer
 
         public TrackBarMenuItem(ISettings settings) : base(new ContainerControl())
         {
-            BackColor = ThemeDictionary.ChromeMidium;
+            BackColor = TrayMenuTheme.Background;
+            ForeColor = TrayMenuTheme.Foreground;
+            Padding = new Padding(0);
+
+            Control.BackColor = TrayMenuTheme.Background;
+            Control.ForeColor = TrayMenuTheme.Foreground;
+            Control.Padding = new Padding(8, 6, 8, 8);
+            Control.MinimumSize = new Size(220, 72);
+            Control.Size = Control.MinimumSize;
+            var contentWidth = Control.MinimumSize.Width - Control.Padding.Horizontal;
 
             var brightnessLabel = new Label()
             {
                 Parent = Control,
                 Text = "Brightness",
                 TextAlign = ContentAlignment.MiddleCenter,
+                Font = TrayMenuTheme.FontBold,
+                ForeColor = TrayMenuTheme.Foreground,
+                AutoSize = false,
+                Height = 18,
+                Left = Control.Padding.Left,
+                Width = contentWidth
             };
 
             trackBar = new TrackBarWithoutFocus
             {
                 Parent = Control,
-                Top = 22,
+                Top = 24,
+                Left = Control.Padding.Left,
+                Width = contentWidth,
                 Minimum = 0,
                 Maximum = 100,
                 TickFrequency = 1,
@@ -98,6 +107,7 @@ namespace PowerDimmer
                 LargeChange = 20,
                 TickStyle = TickStyle.None,
                 Value = settings.Brightness,
+                BackColor = TrayMenuTheme.Background
             };
             // Hack to restore hover-highlights after interacting
             // with trackbar
@@ -109,7 +119,9 @@ namespace PowerDimmer
                 Top = 28,
                 Left = 1,
                 Enabled = false,
-                BackColor = ThemeDictionary.ChromeMidium,
+                BackColor = TrayMenuTheme.Background,
+                ForeColor = TrayMenuTheme.Foreground,
+                Font = TrayMenuTheme.Font,
                 TextAlign = HorizontalAlignment.Center,
                 BorderStyle = BorderStyle.None,
                 Text = settings.Brightness.ToString()

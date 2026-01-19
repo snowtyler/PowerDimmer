@@ -84,19 +84,108 @@ namespace PowerDimmer
 
         public ThemeReferencedContextMenuStrip Build()
         {
-            const int padding = 5;
+            const int itemVerticalPadding = 6;
+            const int itemHorizontalPadding = 12;
+            const int edgePadding = 6;
 
-            var strip = new ThemeReferencedContextMenuStrip { Spacing = padding };
+            var strip = new ThemeReferencedContextMenuStrip
+            {
+                Spacing = 4,
+                BackColor = TrayMenuTheme.Background,
+                ForeColor = TrayMenuTheme.Foreground,
+                Font = TrayMenuTheme.Font,
+                ShowImageMargin = false,
+                ShowCheckMargin = true,
+                Padding = new Padding(edgePadding, edgePadding, edgePadding, edgePadding),
+                RenderMode = ToolStripRenderMode.Professional,
+                Renderer = new ToolStripProfessionalRenderer(new ModernMenuColorTable())
+            };
+
             var array = Items.ToArray();
             for (var i = 0; i < array.Length; ++i)
             {
-                array[i].Padding = new Padding(0, padding, 0, padding);
-                array[i].Margin += new Padding(0, i == 0 ? padding : 0, 0, i == array.Length - 1 ? padding : 0);
+                array[i].Padding = new Padding(itemHorizontalPadding, itemVerticalPadding, itemHorizontalPadding, itemVerticalPadding);
+                array[i].Margin = new Padding(0, i == 0 ? 2 : 0, 0, i == array.Length - 1 ? 2 : 0);
+                array[i].BackColor = TrayMenuTheme.Background;
+                array[i].ForeColor = TrayMenuTheme.Foreground;
+
+                if (array[i] is ToolStripMenuItem menuItem)
+                {
+                    menuItem.Font = TrayMenuTheme.Font;
+                    menuItem.ImageScaling = ToolStripItemImageScaling.None;
+                }
+                else if (array[i] is ToolStripSeparator separator)
+                {
+                    separator.Margin = new Padding(0, 6, 0, 6);
+                }
             }
 
             strip.Items.AddRange(array);
             return strip;
         }
+    }
+
+    internal static class TrayMenuTheme
+    {
+        public static readonly Color Background = Color.FromArgb(28, 28, 30);
+        public static readonly Color Foreground = Color.FromArgb(240, 240, 240);
+        public static readonly Color DisabledForeground = Color.FromArgb(140, 140, 140);
+        public static readonly Color Border = Color.FromArgb(50, 50, 54);
+        public static readonly Color Separator = Color.FromArgb(60, 60, 64);
+        public static readonly Color Highlight = Color.FromArgb(45, 45, 50);
+        public static readonly Color HighlightBorder = Color.FromArgb(72, 72, 78);
+        public static readonly Color Accent = Color.FromArgb(99, 176, 255);
+
+        public static readonly Font Font = ResolveFont(9.5f, FontStyle.Regular);
+        public static readonly Font FontBold = ResolveFont(9.5f, FontStyle.Bold);
+
+        private static Font ResolveFont(float size, FontStyle style)
+        {
+            try
+            {
+                return new Font("Segoe UI Variable Text", size, style);
+            }
+            catch
+            {
+                var fallback = SystemFonts.MessageBoxFont;
+                if (fallback != null)
+                {
+                    return new Font(fallback.FontFamily, fallback.Size, style);
+                }
+
+                return new Font(FontFamily.GenericSansSerif, size, style);
+            }
+        }
+    }
+
+    internal sealed class ModernMenuColorTable : ProfessionalColorTable
+    {
+        public ModernMenuColorTable()
+        {
+            UseSystemColors = false;
+        }
+
+        public override Color ToolStripDropDownBackground => TrayMenuTheme.Background;
+        public override Color MenuBorder => TrayMenuTheme.Border;
+        public override Color MenuItemBorder => TrayMenuTheme.HighlightBorder;
+        public override Color MenuItemSelected => TrayMenuTheme.Highlight;
+        public override Color MenuItemSelectedGradientBegin => TrayMenuTheme.Highlight;
+        public override Color MenuItemSelectedGradientEnd => TrayMenuTheme.Highlight;
+        public override Color MenuItemPressedGradientBegin => TrayMenuTheme.Highlight;
+        public override Color MenuItemPressedGradientEnd => TrayMenuTheme.Highlight;
+        public override Color MenuStripGradientBegin => TrayMenuTheme.Background;
+        public override Color MenuStripGradientEnd => TrayMenuTheme.Background;
+        public override Color ImageMarginGradientBegin => TrayMenuTheme.Background;
+        public override Color ImageMarginGradientMiddle => TrayMenuTheme.Background;
+        public override Color ImageMarginGradientEnd => TrayMenuTheme.Background;
+        public override Color SeparatorDark => TrayMenuTheme.Separator;
+        public override Color SeparatorLight => TrayMenuTheme.Separator;
+        public override Color CheckBackground => TrayMenuTheme.Highlight;
+        public override Color CheckPressedBackground => TrayMenuTheme.Highlight;
+        public override Color CheckSelectedBackground => TrayMenuTheme.Highlight;
+        public override Color ImageMarginRevealedGradientBegin => TrayMenuTheme.Background;
+        public override Color ImageMarginRevealedGradientMiddle => TrayMenuTheme.Background;
+        public override Color ImageMarginRevealedGradientEnd => TrayMenuTheme.Background;
     }
     public class GenerateOption<T> where T : GenerateOption<T>
     {
